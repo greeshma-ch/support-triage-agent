@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: support-triage-agent-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"   # tighten to your Vercel URL after first deploy
+    # Free plan disks are ephemeral (corpus re-seeds from bundled data on
+    # every restart, and any uploaded corpora are lost). Add a paid disk
+    # mounted at /opt/render/project/src/backend/app/storage for uploads
+    # to persist across restarts/deploys.
