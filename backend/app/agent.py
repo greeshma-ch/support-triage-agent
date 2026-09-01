@@ -11,8 +11,14 @@ Processes a single support ticket by:
 import os
 import json
 import re
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+
+# Explicitly point at backend/.env so this works regardless of cwd or how
+# uvicorn's --reload subprocess is spawned on Windows.
+_ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+load_dotenv(_ENV_PATH)
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")

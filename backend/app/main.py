@@ -42,7 +42,6 @@ def startup():
     # Seed the bundled example corpora (hackerrank/claude/visa) on first boot.
     retriever.seed_from_disk()
 
-
 class TriageRequest(BaseModel):
     issue: str
     subject: str = ""

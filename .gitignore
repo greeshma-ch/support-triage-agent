@@ -33,4 +33,4 @@ data/.chroma/
 *.sqlite
 *.db
 *.pyo
-backend\app\storage/ 
+backend/app/storage/
