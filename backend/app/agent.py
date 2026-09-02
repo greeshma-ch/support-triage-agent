@@ -1,27 +1,20 @@
 """
-Core LLM-based triage agent using Google Gemini API (google.genai).
+Core LLM-based triage agent using Gemini via Vertex AI.
 
-Processes a single support ticket by:
-1. Receiving issue, subject, company, and retrieved documentation
-2. Sending a structured prompt to Gemini
-3. Parsing the JSON response
-4. Returning a dict with status, product_area, response, justification, request_type
+Uses Vertex AI (not the AI Studio / Developer API) so billing goes against
+the Cloud project's normal billing account / credits, and auth happens
+automatically via the Cloud Run service account (no API key needed).
 """
 
 import os
 import json
 import re
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-# Explicitly point at backend/.env so this works regardless of cwd or how
-# uvicorn's --reload subprocess is spawned on Windows.
-_ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-load_dotenv(_ENV_PATH)
-
 # ─── Configuration ───────────────────────────────────────────────────────────
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("PROJECT_ID")
+LOCATION = os.environ.get("VERTEX_LOCATION", "us-central1")
 MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 SYSTEM_PROMPT = """You are a support triage agent. You are given a support ticket and
@@ -48,9 +41,9 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        if not GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY not found. Set it in your environment.")
-        _client = genai.Client(api_key=GEMINI_API_KEY)
+        if not PROJECT_ID:
+            raise ValueError("GOOGLE_CLOUD_PROJECT not set in the environment.")
+        _client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
     return _client
 
 
@@ -59,21 +52,18 @@ def _extract_json(text: str) -> dict | None:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-
     json_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
     if json_match:
         try:
             return json.loads(json_match.group(1))
         except json.JSONDecodeError:
             pass
-
     json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text, re.DOTALL)
     if json_match:
         try:
             return json.loads(json_match.group(0))
         except json.JSONDecodeError:
             pass
-
     return None
 
 
@@ -88,11 +78,6 @@ def _safe_escalation_response(reason: str = "LLM parse error") -> dict:
 
 
 def process_ticket(issue: str, subject: str, company: str, retrieved_docs: str) -> dict:
-    """
-    Process a single support ticket through the Gemini LLM.
-
-    Returns dict with keys: status, product_area, response, justification, request_type
-    """
     client = _get_client()
 
     user_message = f"""Support Ticket:
