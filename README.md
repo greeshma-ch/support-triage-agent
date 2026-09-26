@@ -11,7 +11,7 @@ web app.
 ## What's new in this pass
 
 - **FastAPI backend** (`backend/`) wrapping the original CLI pipeline as a
-  REST API, deployable to Render.
+  REST API, deployed on Google Cloud Run (intially deployed on Render).
 - **Confidence scoring** — every retrieval returns a 0–1 "grounding signal"
   derived from ChromaDB's cosine distance. Tickets with weak retrieval
   matches (default threshold `0.35`) are auto-escalated even if the LLM
